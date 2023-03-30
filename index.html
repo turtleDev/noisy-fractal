@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Noisy Fractal</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        button {
+            margin-top: 2rem;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Generating fractals from random numbers (?)</h1>
+    <p>based off of this <a
+            href="https://www.reddit.com/r/algorithms/comments/122nhek/a_weird_fractallooking_image_that_sprouts_from/">this
+            r/algorithms post</a>
+        but it just seems to generate random noise</p>
+    <canvas id="screen" width="400" height="400">
+        <p>your browser seems to be missing canvas capabilities; please use a browser that supports canvas</p>
+    </canvas>
+    <button>step</button>
+</body>
+
+<script>
+    let surface = document.querySelector('canvas[id=screen]');
+    let w = surface.clientWidth;
+    let h = surface.clientHeight;
+    let grid = new Uint8Array(w * h);
+    let neighbourOffsets = [
+        [1, 0],
+        [0, 1],
+        [-1, 0],
+        [0, -1],
+        [1, 1],
+        [-1, 1],
+        [-1, -1],
+        [1, -1],
+    ];
+    function loc(x, y) {
+        return (x * w) + (y % h);
+    }
+    function get(x, y, g) {
+        return g[loc(x, y)];
+    }
+    function set(x, y, g, v) {
+        g[loc(x, y)] = v;
+    }
+
+    function traverse(x, y, f) {
+        for (let j = 0; j < y; j++) {
+            for (let i = 0; i < x; i++) {
+                f(i, j);
+            }
+        }
+    }
+    function rand() {
+        return Math.ceil(Math.random() * 255);
+    }
+
+    function init() {
+        traverse(w, h, function (x, y) {
+            if (x <= 0 || y <= 0 || x === w - 1 || y === h - 1) {
+                return
+            }
+            set(x, y, grid, rand());
+        });
+
+        let ctx = surface.getContext("2d");
+        traverse(w, h, function (x, y) {
+            let v = get(x, y, grid);
+            ctx.fillStyle = `rgb(${v}, ${v}, ${v})`;
+            ctx.fillRect(x, y, 1, 1);
+        });
+    }
+
+
+    function run() {
+
+        for (let n = 0; n < 1000; n++) {
+            traverse(w, h, function (x, y) {
+                if (x <= 0 || y <= 0 || x === w - 1 || y === h - 1) {
+                    return
+                }
+
+                let value = rand();
+                for (let [i, j] of neighbourOffsets) {
+                    value += get(x + i, y + j, grid);
+                }
+                value = value / neighbourOffsets.length;
+                set(x, y, grid, value);
+            });
+        }
+
+        let ctx = surface.getContext("2d");
+        traverse(w, h, function (x, y) {
+            let v = get(x, y, grid);
+            ctx.fillStyle = `rgb(${v}, ${v}, ${v})`;
+            ctx.fillRect(x, y, 1, 1);
+        });
+
+    }
+
+
+
+    init();
+    run();
+    document.querySelector('button').addEventListener("click", function (ev) {
+        ev.target.disabled = true;
+
+        // needed to defer computation until browser has repainted
+        new Promise((resolve, reject) => {
+            setTimeout(function () {
+                run();
+                resolve();
+            }, 0)
+        }).then(() => { ev.target.disabled = false; })
+    })
+</script>
+
+</html>
